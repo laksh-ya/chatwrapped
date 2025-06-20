@@ -131,6 +131,35 @@ def get_emoji_stats(messages, top_n=10):
 
 	return total_emojis, top_emojis, most_emoji_sender
 
+
+def count_zero_message_days(messages):
+    if not messages:
+        return 0
+
+    messages.sort(key=lambda x: x['datetime'])
+
+    start_date = messages[0]['datetime'].date()
+    end_date = messages[-1]['datetime'].date()
+
+    total_days = (end_date - start_date).days + 1
+    active_days = set(msg['datetime'].date() for msg in messages)
+
+    return total_days - len(active_days)
+
+def get_avg_word_length_per_person(messages):
+    word_lengths = defaultdict(list)
+
+    for msg in messages:
+        sender = msg['sender']
+        words = msg['message'].split()
+        lengths = [len(word) for word in words if word.isalpha()]
+        if lengths:
+            word_lengths[sender].extend(lengths)
+
+    avg_lengths = {sender: round(sum(lengths)/len(lengths), 2) for sender, lengths in word_lengths.items() if lengths}
+    return avg_lengths
+
+
 # 🧠 UI STARTS HERE
 st.title("🧠 WhatsApp Chat Analyzer")
 
@@ -165,24 +194,33 @@ if uploaded_file is not None:
 	monthly_data = get_monthly_message_counts(messages)
 	st.bar_chart(monthly_data)
 
-	st.subheader("🧠 Top Words")
-	top_words = get_top_words(messages)
-	st.write(top_words)
+	st.subheader("📈 Messages Per Day (with 0s)")
+	daily_data = count_zero_message_days(messages)
+	st.write("Total days with 0 msgs", daily_data)
 
-	st.subheader("☁️ Word Cloud")
-	wc = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(dict(top_words))
-	st.image(wc.to_array())
+	st.subheader("📏 Average Word Length Per Person")
+	avg_word_len = get_avg_word_length_per_person(messages)
+	st.write(avg_word_len)
 
-	st.subheader("😂 Emoji Stats")
-	total_emojis, top_emojis, most_emoji_sender = get_emoji_stats(messages)
-	st.write(f"Total Emojis Sent: {total_emojis}")
-	st.write("Top Emojis:", top_emojis)
-	st.write(f"Most Emoji Sender: {most_emoji_sender[0]} ({most_emoji_sender[1]} emojis)")
 
-	st.subheader("☁️ Emoji Cloud")
-	emoji_text = ''.join([emoji * count for emoji, count in top_emojis])
-	if emoji_text.strip():
-		emoji_cloud = WordCloud(width=800, height=400, background_color='white', font_path=None, regexp=r"[^\s]").generate(emoji_text)
-		st.image(emoji_cloud.to_array())
-	else:
-		st.warning("No emojis found to generate the emoji cloud 🥲")
+	# st.subheader("🧠 Top Words")
+	# top_words = get_top_words(messages)
+	# st.write(top_words)
+
+	# st.subheader("☁️ Word Cloud")
+	# wc = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(dict(top_words))
+	# st.image(wc.to_array())
+
+	# st.subheader("😂 Emoji Stats")
+	# total_emojis, top_emojis, most_emoji_sender = get_emoji_stats(messages)
+	# st.write(f"Total Emojis Sent: {total_emojis}")
+	# st.write("Top Emojis:", top_emojis)
+	# st.write(f"Most Emoji Sender: {most_emoji_sender[0]} ({most_emoji_sender[1]} emojis)")
+
+	# st.subheader("☁️ Emoji Cloud")
+	# emoji_text = ''.join([emoji * count for emoji, count in top_emojis])
+	# if emoji_text.strip():
+	# 	emoji_cloud = WordCloud(width=800, height=400, background_color='white', font_path=None, regexp=r"[^\s]").generate(emoji_text)
+	# 	st.image(emoji_cloud.to_array())
+	# else:
+	# 	st.warning("No emojis found to generate the emoji cloud 🥲")
